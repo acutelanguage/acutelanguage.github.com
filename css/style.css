@@ -45,6 +45,12 @@ body {
   line-height: 150%;
 }
 
+#content pre, code {
+  padding: 0.5em;
+  background-color: #ddd;
+  line-height: 180%;
+}
+
 #footer {
   padding: 1em;
   font-size: 0.75em;
