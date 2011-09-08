@@ -3,8 +3,8 @@
 requirement: 0.2
 
 # The folder where the site's source files are kept.
-site_path:       .
-output_path:     _output
+site_path:       site
+output_path:     .
 
 # Other paths:
 layouts_path:    _layouts
