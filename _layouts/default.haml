@@ -21,7 +21,8 @@
   %body
     #container
       #header
-        %h1 Acute!
+        %h1
+          %a{:href => "/", :style => "text-decoration:none;background-color:#fff;"} Acute!
         - if page.subtitle
           %h6= page.subtitle
         - else
