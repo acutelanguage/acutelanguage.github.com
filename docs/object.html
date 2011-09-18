@@ -1,0 +1,68 @@
+<!DOCTYPE html><html><head><title>Acute Programming Language</title><meta charset="UTF-8" /><meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" /><meta content="width=device-width, initial-scale=1.0" name="viewport" /><link href="//fonts.googleapis.com/css?family=Oswald" rel="stylesheet" type="text/css" /><link href="/css/style.css" rel="stylesheet" /></head><body><div id="container"><div id="header"><h1><a href="/" style="text-decoration:none;background-color:#fff;">Acute!</a></h1><h6>Small, focused documentation</h6></div><div id="content"><h2 id='object_model'>Object Model</h2>
+
+<p>As in Io, Acute has a small object model. It needs to be lightweight for a variety of reasons. For instance, we create tens of thousands of objects over a typical small program. Io&#8217;s objects rack in at a hefty <strong>60 bytes</strong> on a 64-bit platform. Acute on the other hand, weighs in at a whomping <strong>16 bytes</strong> assuming no packing occurs. Realistically, it only needs <strong>65 bits</strong>, or if we encode the lookup bit into the MSB of the slot table, we need just <strong>8 bytes</strong>. These are discussions for another time though. Suffice to say, objects in Acute are very lightweight.</p>
+
+<p>Everything in Acute is represented by an object. The global namespace, locals of a method, even the AST (messages). Our model is not so different to that found in the Io programming language, with a couple of notable exceptions. First, and easiest to explain, is the fact that they are more efficient in terms of space; lastly, we grant you more hooks into the system allowing you to redefine language semantics at runtime. This may sound a bit scary, and in fact, it can be, but that&#8217;s a philosophical discussion for another day.</p>
+
+<p>Let&#8217;s start with an example, how does the model function.</p>
+
+<h3 id='ast_creation'>AST Creation</h3>
+
+<p>As discussed in the <a href='/docs/syntax.html'>Syntax</a> section previously, we work by passing messages to other objects. We walk the tree of messages to evaluate them; but how is this tree created? Simply, we split the source file up into tokens, match those tokens against expected patterns, and create message objects. Then we pass this into the objects evaluator, and let it take it from there.</p>
+
+<h3 id='evaluator'>Evaluator</h3>
+
+<p>The basic evaluator operates in a two phase process. First we must look up the name of the thing we&#8217;re calling, find out which object it lives on, and return its value (or in the case of the Acute bootstrap, we do this with an additional layer of indirection I&#8217;ll talk about later). This value gets passed to the evaluator which checks it for things like an activatable bit, which if present, will perform another lookup for an <code>activate</code> method, invoke it and return its result. Otherwise, it will just return the result directly. This result is then used as the next receiver in the tree walker; and so the cycle of life spins.</p>
+
+<h3 id='slots'>Slots</h3>
+
+<p>Each object maintains a list of what are known as <em>slots</em>. These hold data. In Io, the data they hold are the objects themselves. In Acute, they&#8217;re an intermediate object known as a <em>Slot</em>. This Slot object has slots itself, for instance, its <code>data</code> slot will hold the object directly, without an intermediate Slot object. This avoids a recursive dependency problem. We provide this intermediate layer, for no other reason than flexibility. It allows you to build up some features easily that are more difficult to do in Io directly. One example of this is slot access control.</p>
+
+<p>Consider for a moment, that you want only the instance of an object to call certain methods on itself. What might that look like?</p>
+
+<pre><code>setSlot(&quot;Foo&quot;, Object clone do(
+  setSlot(&quot;number&quot;, 1)
+  setSlot(&quot;privateMethod&quot;, method(number *(2)))
+))</code></pre>
+
+<p>Now, we may only want to allow access to <code>privateMethod</code> from within a particular copy of <code>Foo</code>. This is a non-trivial problem in Io. You&#8217;d have to create a proxy object which maintains the bookkeeping information on this access control. The caller would have to interface with it, or you&#8217;d have to hack it into place. Since Io doesn&#8217;t allow you to override slot lookup in a meaningful way, this becomes harder to do. I&#8217;m not going to go into details of how to do it in Io, I just don&#8217;t have the time or energy. Suffice to say, it&#8217;s easier in Acute. Consider:</p>
+
+<p>Lets assume that we already have our <code>Foo</code> definition as above. We just need to change a few things.</p>
+
+<pre><code>Foo setSlot(&quot;lookup&quot;, method(str,
+  setSlot(&quot;slot&quot;, self _lookup(str))
+  slot ifTrue(
+    slot isPrivate and(call sender ==(self)) ifFalse(Exception raise(&quot;You tried to call a private method&quot;))
+  )
+  slot
+))</code></pre>
+
+<p>That&#8217;s pretty much it. Here we override slot lookup, extending it in such a way to ensure our caller has appropriate permission to call the slot.</p>
+
+<h3 id='recap'>Recap</h3>
+
+<p>To recap, our algorithm is like this:</p>
+
+<ol>
+<li>Create AST nodes from input stream as <code>Message</code> objects.</li>
+
+<li>Pass nodes to evaluator</li>
+
+<li>Check message for a cached result, if present, return it immediately</li>
+
+<li>Look up the name of the message in the receiver of the message (recurse through parent tree)</li>
+
+<li>If we fail to find an object through lookup, throw an exception</li>
+
+<li>Check the activatable bit on the object we found</li>
+
+<li>If object is activatable, look up its activate method (recurse through parent tree)</li>
+
+<li>Throw an error if we have no activate method</li>
+
+<li>Call the activate function and return its result</li>
+
+<li>If object wasn&#8217;t activatable, return the result</li>
+
+<li>Tree walker takes the last result from the evaluator and uses it as the receiver for its next message.</li>
+</ol></div><div id="footer"><p>Generated by <a href="http://sinefunc.com/proton/">Proton</a> and hosted on <a class="period" href="https://github.com/">GitHub</a></p></div></div></body></html>

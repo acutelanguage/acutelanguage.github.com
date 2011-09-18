@@ -11,7 +11,7 @@ add to the documentation and send a pull request.
 
 This document describes the syntax of Acute, including some code examples.
 
-### Object Model
+### [Object Model](/docs/object.html)
 
 Here we discuss the object model in detail, including all hooks you have access to, why we do things this way, and why we believe our model to be awesome.
 
